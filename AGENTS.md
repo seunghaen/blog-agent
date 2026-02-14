@@ -20,7 +20,7 @@ Implement pipeline 1~4 described in requirements.md.
 ## How to run
 
 - Provide a CLI entry:
-  python -m src.pipeline --base-dir "<path>" --latest 1
+  python -m src.pipeline --input-root-id "<drive_folder_id>" --output-root-id "<drive_folder_id>" --latest 1
 
 ## Tests
 
