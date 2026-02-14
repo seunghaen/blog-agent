@@ -1,0 +1,14 @@
+# Local runtime files
+config/runtime.local.json
+config/prompts.local.json
+
+# Local secrets
+.env
+.env.*
+*.secrets.json
+*service-account*.json
+
+# Python cache
+__pycache__/
+*.pyc
+

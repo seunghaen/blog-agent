@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import json
 from typing import Any, Callable, Protocol
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+PLACES_FIND_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+PLACES_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 
 
 @dataclass(frozen=True)
@@ -80,7 +86,10 @@ class PlacesClient:
         if not self._provider:
             return RestaurantInfo(found=False, recent_reviews_cutoff_days=cutoff_days)
 
-        found = self._provider.search_place(restaurant_name)
+        try:
+            found = self._provider.search_place(restaurant_name)
+        except Exception:
+            return RestaurantInfo(found=False, recent_reviews_cutoff_days=cutoff_days)
         if not found:
             return RestaurantInfo(found=False, recent_reviews_cutoff_days=cutoff_days)
 
@@ -88,7 +97,10 @@ class PlacesClient:
         if not place_id:
             return RestaurantInfo(found=False, recent_reviews_cutoff_days=cutoff_days)
 
-        details = self._provider.get_place_details(place_id) or {}
+        try:
+            details = self._provider.get_place_details(place_id) or {}
+        except Exception:
+            return RestaurantInfo(found=False, recent_reviews_cutoff_days=cutoff_days)
         recent_reviews = self._filter_recent_reviews(details.get("reviews"), cutoff_days)
         return RestaurantInfo(
             found=True,
@@ -131,6 +143,79 @@ class PlacesClient:
         return result
 
 
+class GooglePlacesProvider(PlacesProviderProtocol):
+    """Google Places provider using Places Web Service (legacy endpoints)."""
+
+    def __init__(self, api_key: str, language: str = "ko") -> None:
+        if not api_key.strip():
+            raise ValueError("places api key is empty")
+        self._api_key = api_key.strip()
+        self._language = language
+
+    def search_place(self, restaurant_name: str) -> dict[str, Any] | None:
+        params = {
+            "input": restaurant_name,
+            "inputtype": "textquery",
+            "fields": "place_id,name,formatted_address",
+            "language": self._language,
+            "key": self._api_key,
+        }
+        payload = _http_get_json(PLACES_FIND_URL, params=params)
+        candidates = payload.get("candidates") or []
+        if not candidates:
+            return None
+        top = candidates[0]
+        place_id = str(top.get("place_id", "")).strip()
+        if not place_id:
+            return None
+        return {"place_id": place_id}
+
+    def get_place_details(self, place_id: str) -> dict[str, Any] | None:
+        params = {
+            "place_id": place_id,
+            "fields": (
+                "place_id,name,formatted_address,opening_hours,rating,user_ratings_total,"
+                "url,website,reviews"
+            ),
+            "reviews_sort": "newest",
+            "language": self._language,
+            "key": self._api_key,
+        }
+        payload = _http_get_json(PLACES_DETAILS_URL, params=params)
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            return None
+
+        normalized_reviews: list[dict[str, Any]] = []
+        for review in result.get("reviews") or []:
+            if not isinstance(review, dict):
+                continue
+            normalized_reviews.append(
+                {
+                    "time": review.get("time"),
+                    "rating": review.get("rating"),
+                    "text": str(review.get("text", "")),
+                    "relative_time": str(review.get("relative_time_description", "")),
+                }
+            )
+
+        opening_hours = result.get("opening_hours", {})
+        weekday_text = []
+        if isinstance(opening_hours, dict):
+            weekday_text = list(opening_hours.get("weekday_text") or [])
+
+        return {
+            "name": str(result.get("name", "")),
+            "address": str(result.get("formatted_address", "")),
+            "opening_hours": weekday_text,
+            "rating": result.get("rating"),
+            "user_ratings_total": result.get("user_ratings_total"),
+            "maps_url": str(result.get("url", "")),
+            "website": str(result.get("website", "")),
+            "reviews": normalized_reviews,
+        }
+
+
 def _safe_int(value: Any) -> int | None:
     try:
         if value is None:
@@ -148,3 +233,20 @@ def _safe_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
+
+def _http_get_json(url: str, params: dict[str, Any], timeout_sec: float = 20.0) -> dict[str, Any]:
+    query = urlencode(params)
+    request = Request(f"{url}?{query}", method="GET")
+    with urlopen(request, timeout=timeout_sec) as response:
+        data = response.read().decode("utf-8")
+    payload = json.loads(data)
+    if not isinstance(payload, dict):
+        raise ValueError("places response is not a JSON object")
+    status = str(payload.get("status", "OK"))
+    if status not in {"OK", "ZERO_RESULTS"}:
+        error_message = str(payload.get("error_message", "")).strip()
+        detail = f"places api status={status}"
+        if error_message:
+            detail += f" message={error_message}"
+        raise RuntimeError(detail)
+    return payload

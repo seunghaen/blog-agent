@@ -1,0 +1,12 @@
+{
+  "vision_prompt": "Analyze this restaurant-related image and return ONLY JSON with this schema: {\"scene_type\":\"food|menu|interior|exterior|receipt|other\",\"observations\":[\"...\"],\"food_guess\":[\"... (estimated)\"],\"ambience_hints\":[\"...\"],\"bloggable_details\":[\"...\"],\"warnings\":[\"...\"]}. Keep each list short and factual. If uncertain, mention uncertainty in warnings.",
+  "title_template": "{restaurant_name} 방문 기록",
+  "intro_template": "{visit_date} 방문 사진 {image_count}장을 기준으로 정리했습니다.",
+  "scene_summary_template": "사진에서 확인된 장면은 {scene_text}입니다.",
+  "observations_prefix": "사진 관찰 포인트: ",
+  "food_guess_prefix": "음식 추정: ",
+  "recent_review_template": "최근 60일 기준 공개 의견 {review_count}건이 확인되며, 예시로 {summary} 같은 반응이 보입니다.",
+  "fallback_paragraph": "사진에서 확인 가능한 범위 안에서만 내용을 구성했습니다.",
+  "missing_info_line": "식당 기본 정보는 확인되지 않아 사진 기준으로만 정리했습니다."
+}
+

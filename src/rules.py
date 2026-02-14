@@ -7,6 +7,7 @@ import re
 
 BANNED_LITERALS = ("**", "<hr", ".gif", "image/gif")
 REVIEW_REFERENCE_KEYWORDS = ("최근 리뷰", "리뷰에서", "review")
+QUOTED_SENTENCE_PATTERN = re.compile(r'>\s*"[^"<>\n]{5,}"\s*<')
 EMOJI_PATTERN = re.compile(
     "["
     "\U0001F300-\U0001F5FF"
@@ -45,6 +46,9 @@ def validate_html_document(html_text: str, recent_review_count: int = 0) -> Rule
     if EMOJI_PATTERN.search(html_text):
         violations.append("contains emoji")
 
+    if QUOTED_SENTENCE_PATTERN.search(html_text):
+        violations.append("contains quoted full-sentence emphasis")
+
     if recent_review_count == 0:
         for keyword in REVIEW_REFERENCE_KEYWORDS:
             if keyword.lower() in lowered:
@@ -57,4 +61,3 @@ def validate_html_document(html_text: str, recent_review_count: int = 0) -> Rule
 def assert_stage(stage: int) -> None:
     if stage not in {1, 2, 3, 4}:
         raise ValueError("stage must be one of: 1, 2, 3, 4")
-

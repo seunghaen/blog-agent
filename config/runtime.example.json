@@ -1,0 +1,16 @@
+{
+  "storage_mode": "drive",
+  "google_auth_mode": "service_account",
+  "google_credentials_file": "/absolute/path/to/service-account.json",
+  "google_oauth_token_file": ".cache/google_oauth_token.json",
+  "input_root_id": "REPLACE_WITH_RESTAURANTREVIEWS_FOLDER_ID",
+  "output_root_id": "REPLACE_WITH_OUTPUT_FOLDER_ID",
+  "latest": 1,
+  "stage": 4,
+  "write_intermediates": false,
+  "places_api_key": "REPLACE_WITH_PLACES_API_KEY",
+  "vision_api_key": "REPLACE_WITH_GEMINI_API_KEY",
+  "vision_model": "gemini-1.5-flash",
+  "prompt_file": "config/prompts.example.json"
+}
+
